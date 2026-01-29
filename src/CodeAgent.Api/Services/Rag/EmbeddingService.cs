@@ -11,12 +11,12 @@ public interface IEmbeddingService
 
 public class EmbeddingService : IEmbeddingService
 {
-    private readonly IAzureOpenAiClient _openAiClient;
+    private readonly ILlmClient _llmClient;
     private readonly ILogger<EmbeddingService> _logger;
 
-    public EmbeddingService(IAzureOpenAiClient openAiClient, ILogger<EmbeddingService> logger)
+    public EmbeddingService(ILlmClient llmClient, ILogger<EmbeddingService> logger)
     {
-        _openAiClient = openAiClient;
+        _llmClient = llmClient;
         _logger = logger;
     }
 
@@ -24,7 +24,7 @@ public class EmbeddingService : IEmbeddingService
     {
         // Prepare text for embedding - include relevant context
         var preparedText = PrepareTextForEmbedding(text);
-        return await _openAiClient.GetEmbeddingAsync(preparedText);
+        return await _llmClient.GetEmbeddingAsync(preparedText);
     }
 
     public async Task<List<CodeChunk>> GenerateEmbeddingsAsync(List<CodeChunk> chunks)
@@ -35,7 +35,7 @@ public class EmbeddingService : IEmbeddingService
         var texts = chunks.Select(chunk => PrepareChunkForEmbedding(chunk)).ToList();
 
         // Generate embeddings in batches
-        var embeddings = await _openAiClient.GetEmbeddingsAsync(texts);
+        var embeddings = await _llmClient.GetEmbeddingsAsync(texts);
 
         // Assign embeddings to chunks
         for (int i = 0; i < chunks.Count; i++)

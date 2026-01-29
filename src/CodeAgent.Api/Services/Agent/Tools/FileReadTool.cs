@@ -1,5 +1,4 @@
 using System.Text.Json;
-using OpenAI.Chat;
 using CodeAgent.Api.Infrastructure;
 
 namespace CodeAgent.Api.Services.Agent.Tools;
@@ -18,12 +17,13 @@ public class FileReadTool : AgentToolBase
         _logger = logger;
     }
 
-    public override ChatTool GetToolDefinition()
+    public override LlmToolDefinition GetToolDefinition()
     {
-        return ChatTool.CreateFunctionTool(
-            Name,
-            Description,
-            CreateParameters(
+        return new LlmToolDefinition
+        {
+            Name = Name,
+            Description = Description,
+            Parameters = CreateParameters(
                 new Dictionary<string, object>
                 {
                     ["file_path"] = new Dictionary<string, object>
@@ -44,7 +44,7 @@ public class FileReadTool : AgentToolBase
                 },
                 new List<string> { "file_path" }
             )
-        );
+        };
     }
 
     public override async Task<string> ExecuteAsync(string input, string repositoryId)

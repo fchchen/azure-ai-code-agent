@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Runtime.CompilerServices;
-using OpenAI.Chat;
 using CodeAgent.Api.Infrastructure;
 using CodeAgent.Api.Services.Agent.Tools;
 using CodeAgent.Api.Services.Grounding;
@@ -21,7 +20,7 @@ public interface IAgentOrchestrator
 
 public class AgentOrchestrator : IAgentOrchestrator
 {
-    private readonly IAzureOpenAiClient _openAiClient;
+    private readonly ILlmClient _llmClient;
     private readonly ICitationService _citationService;
     private readonly ICosmosDbContext _cosmosDb;
     private readonly IEnumerable<IAgentTool> _tools;
@@ -29,13 +28,13 @@ public class AgentOrchestrator : IAgentOrchestrator
     private const int MaxIterations = 10;
 
     public AgentOrchestrator(
-        IAzureOpenAiClient openAiClient,
+        ILlmClient llmClient,
         ICitationService citationService,
         ICosmosDbContext cosmosDb,
         IEnumerable<IAgentTool> tools,
         ILogger<AgentOrchestrator> logger)
     {
-        _openAiClient = openAiClient;
+        _llmClient = llmClient;
         _citationService = citationService;
         _cosmosDb = cosmosDb;
         _tools = tools;
@@ -60,13 +59,13 @@ public class AgentOrchestrator : IAgentOrchestrator
             iteration++;
             _logger.LogDebug("Agent iteration {Iteration}", iteration);
 
-            var completion = await _openAiClient.GetChatCompletionWithToolsAsync(messages, toolDefinitions);
+            var completion = await _llmClient.GetChatCompletionAsync(messages, toolDefinitions);
 
             // Check if the model wants to use tools
-            if (completion.FinishReason == ChatFinishReason.ToolCalls && completion.ToolCalls?.Count > 0)
+            if (completion.RequiresToolCalls && completion.ToolCalls?.Count > 0)
             {
                 // Add assistant message with tool calls
-                messages.Add(ChatMessage.CreateAssistantMessage(completion));
+                messages.Add(LlmMessage.AssistantWithToolCalls(completion.ToolCalls));
 
                 // Process each tool call
                 foreach (var toolCall in completion.ToolCalls)
@@ -75,7 +74,7 @@ public class AgentOrchestrator : IAgentOrchestrator
                     if (tool == null)
                     {
                         _logger.LogWarning("Unknown tool requested: {ToolName}", toolCall.FunctionName);
-                        messages.Add(ChatMessage.CreateToolMessage(toolCall.Id, $"Error: Unknown tool '{toolCall.FunctionName}'"));
+                        messages.Add(LlmMessage.Tool(toolCall.Id, $"Error: Unknown tool '{toolCall.FunctionName}'"));
                         continue;
                     }
 
@@ -86,22 +85,22 @@ public class AgentOrchestrator : IAgentOrchestrator
                         StepNumber = reasoningSteps.Count + 1,
                         Thought = $"Using {toolCall.FunctionName} to gather information",
                         Action = toolCall.FunctionName,
-                        ActionInput = toolCall.FunctionArguments.ToString()
+                        ActionInput = toolCall.Arguments
                     };
 
                     try
                     {
-                        var result = await tool.ExecuteAsync(toolCall.FunctionArguments.ToString(), repositoryId);
+                        var result = await tool.ExecuteAsync(toolCall.Arguments, repositoryId);
                         step.Observation = result;
                         allToolResults.Add(result);
-                        messages.Add(ChatMessage.CreateToolMessage(toolCall.Id, result));
+                        messages.Add(LlmMessage.Tool(toolCall.Id, result));
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Tool execution failed: {ToolName}", toolCall.FunctionName);
                         var errorResult = $"Error executing tool: {ex.Message}";
                         step.Observation = errorResult;
-                        messages.Add(ChatMessage.CreateToolMessage(toolCall.Id, errorResult));
+                        messages.Add(LlmMessage.Tool(toolCall.Id, errorResult));
                     }
 
                     reasoningSteps.Add(step);
@@ -110,10 +109,10 @@ public class AgentOrchestrator : IAgentOrchestrator
             else
             {
                 // Model has finished with a final response
-                var finalContent = completion.Content?.Count > 0 ? completion.Content[0].Text : string.Empty;
+                var finalContent = completion.Content ?? string.Empty;
 
                 // Extract citations from tool results and final response
-                var groundedContent = _citationService.ExtractCitations(finalContent ?? string.Empty, allToolResults);
+                var groundedContent = _citationService.ExtractCitations(finalContent, allToolResults);
 
                 return new ApiAgentResponse
                 {
@@ -155,11 +154,11 @@ public class AgentOrchestrator : IAgentOrchestrator
         {
             iteration++;
 
-            var completion = await _openAiClient.GetChatCompletionWithToolsAsync(messages, toolDefinitions);
+            var completion = await _llmClient.GetChatCompletionAsync(messages, toolDefinitions);
 
-            if (completion.FinishReason == ChatFinishReason.ToolCalls && completion.ToolCalls?.Count > 0)
+            if (completion.RequiresToolCalls && completion.ToolCalls?.Count > 0)
             {
-                messages.Add(ChatMessage.CreateAssistantMessage(completion));
+                messages.Add(LlmMessage.AssistantWithToolCalls(completion.ToolCalls));
                 toolExecutionResults.Clear();
 
                 foreach (var toolCall in completion.ToolCalls)
@@ -175,13 +174,13 @@ public class AgentOrchestrator : IAgentOrchestrator
                     yield return new ApiStreamingAgentResponse
                     {
                         Type = "action",
-                        Content = JsonSerializer.Serialize(new { tool = toolCall.FunctionName, input = toolCall.FunctionArguments.ToString() })
+                        Content = JsonSerializer.Serialize(new { tool = toolCall.FunctionName, input = toolCall.Arguments })
                     };
 
                     string result;
                     try
                     {
-                        result = await tool.ExecuteAsync(toolCall.FunctionArguments.ToString(), repositoryId);
+                        result = await tool.ExecuteAsync(toolCall.Arguments, repositoryId);
                         allToolResults.Add(result);
                     }
                     catch (Exception ex)
@@ -202,27 +201,24 @@ public class AgentOrchestrator : IAgentOrchestrator
                 // Add all tool results to messages
                 foreach (var (toolCallId, result) in toolExecutionResults)
                 {
-                    messages.Add(ChatMessage.CreateToolMessage(toolCallId, result));
+                    messages.Add(LlmMessage.Tool(toolCallId, result));
                 }
             }
             else
             {
                 // Stream the final response
-                await foreach (var update in _openAiClient.GetStreamingChatCompletionAsync(messages, null))
+                await foreach (var text in _llmClient.GetStreamingChatCompletionAsync(messages, cancellationToken))
                 {
                     if (cancellationToken.IsCancellationRequested)
                         yield break;
 
-                    foreach (var contentPart in update.ContentUpdate)
+                    if (!string.IsNullOrEmpty(text))
                     {
-                        if (!string.IsNullOrEmpty(contentPart.Text))
+                        yield return new ApiStreamingAgentResponse
                         {
-                            yield return new ApiStreamingAgentResponse
-                            {
-                                Type = "answer",
-                                Content = contentPart.Text
-                            };
-                        }
+                            Type = "answer",
+                            Content = text
+                        };
                     }
                 }
 
@@ -243,11 +239,11 @@ public class AgentOrchestrator : IAgentOrchestrator
         }
     }
 
-    private List<ChatMessage> BuildConversationMessages(string userMessage, ApiConversationContext? context)
+    private List<LlmMessage> BuildConversationMessages(string userMessage, ApiConversationContext? context)
     {
-        var messages = new List<ChatMessage>
+        var messages = new List<LlmMessage>
         {
-            ChatMessage.CreateSystemMessage(AgentPrompts.SystemPrompt + "\n\n" + AgentPrompts.ReActPrompt)
+            LlmMessage.System(AgentPrompts.SystemPrompt + "\n\n" + AgentPrompts.ReActPrompt)
         };
 
         // Add conversation history
@@ -258,17 +254,17 @@ public class AgentOrchestrator : IAgentOrchestrator
                 switch (msg.Role.ToLowerInvariant())
                 {
                     case "user":
-                        messages.Add(ChatMessage.CreateUserMessage(msg.Content));
+                        messages.Add(LlmMessage.User(msg.Content));
                         break;
                     case "assistant":
-                        messages.Add(ChatMessage.CreateAssistantMessage(msg.Content));
+                        messages.Add(LlmMessage.Assistant(msg.Content));
                         break;
                 }
             }
         }
 
         // Add current user message
-        messages.Add(ChatMessage.CreateUserMessage(userMessage));
+        messages.Add(LlmMessage.User(userMessage));
 
         return messages;
     }

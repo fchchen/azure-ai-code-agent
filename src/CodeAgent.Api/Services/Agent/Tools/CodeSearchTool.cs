@@ -1,5 +1,5 @@
 using System.Text.Json;
-using OpenAI.Chat;
+using CodeAgent.Api.Infrastructure;
 using CodeAgent.Api.Services.Rag;
 
 namespace CodeAgent.Api.Services.Agent.Tools;
@@ -18,12 +18,13 @@ public class CodeSearchTool : AgentToolBase
         _logger = logger;
     }
 
-    public override ChatTool GetToolDefinition()
+    public override LlmToolDefinition GetToolDefinition()
     {
-        return ChatTool.CreateFunctionTool(
-            Name,
-            Description,
-            CreateParameters(
+        return new LlmToolDefinition
+        {
+            Name = Name,
+            Description = Description,
+            Parameters = CreateParameters(
                 new Dictionary<string, object>
                 {
                     ["query"] = new Dictionary<string, object>
@@ -44,7 +45,7 @@ public class CodeSearchTool : AgentToolBase
                 },
                 new List<string> { "query" }
             )
-        );
+        };
     }
 
     public override async Task<string> ExecuteAsync(string input, string repositoryId)

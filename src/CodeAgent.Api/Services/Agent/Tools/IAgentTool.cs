@@ -1,4 +1,4 @@
-using OpenAI.Chat;
+using CodeAgent.Api.Infrastructure;
 
 namespace CodeAgent.Api.Services.Agent.Tools;
 
@@ -6,7 +6,7 @@ public interface IAgentTool
 {
     string Name { get; }
     string Description { get; }
-    ChatTool GetToolDefinition();
+    LlmToolDefinition GetToolDefinition();
     Task<string> ExecuteAsync(string input, string repositoryId);
 }
 
@@ -15,10 +15,10 @@ public abstract class AgentToolBase : IAgentTool
     public abstract string Name { get; }
     public abstract string Description { get; }
 
-    public abstract ChatTool GetToolDefinition();
+    public abstract LlmToolDefinition GetToolDefinition();
     public abstract Task<string> ExecuteAsync(string input, string repositoryId);
 
-    protected static BinaryData CreateParameters(Dictionary<string, object> properties, List<string>? required = null)
+    protected static object CreateParameters(Dictionary<string, object> properties, List<string>? required = null)
     {
         var schema = new Dictionary<string, object>
         {
@@ -31,6 +31,6 @@ public abstract class AgentToolBase : IAgentTool
             schema["required"] = required;
         }
 
-        return BinaryData.FromObjectAsJson(schema);
+        return schema;
     }
 }

@@ -1,29 +1,29 @@
 using System.Text.Json;
-using OpenAI.Chat;
 using CodeAgent.Api.Infrastructure;
 
 namespace CodeAgent.Api.Services.Agent.Tools;
 
 public class ExplainCodeTool : AgentToolBase
 {
-    private readonly IAzureOpenAiClient _openAiClient;
+    private readonly ILlmClient _llmClient;
     private readonly ILogger<ExplainCodeTool> _logger;
 
     public override string Name => "explain_code";
     public override string Description => AgentPrompts.GetExplainCodeToolDescription();
 
-    public ExplainCodeTool(IAzureOpenAiClient openAiClient, ILogger<ExplainCodeTool> logger)
+    public ExplainCodeTool(ILlmClient llmClient, ILogger<ExplainCodeTool> logger)
     {
-        _openAiClient = openAiClient;
+        _llmClient = llmClient;
         _logger = logger;
     }
 
-    public override ChatTool GetToolDefinition()
+    public override LlmToolDefinition GetToolDefinition()
     {
-        return ChatTool.CreateFunctionTool(
-            Name,
-            Description,
-            CreateParameters(
+        return new LlmToolDefinition
+        {
+            Name = Name,
+            Description = Description,
+            Parameters = CreateParameters(
                 new Dictionary<string, object>
                 {
                     ["code"] = new Dictionary<string, object>
@@ -45,7 +45,7 @@ public class ExplainCodeTool : AgentToolBase
                 },
                 new List<string> { "code" }
             )
-        );
+        };
     }
 
     public override async Task<string> ExecuteAsync(string input, string repositoryId)
@@ -62,15 +62,15 @@ public class ExplainCodeTool : AgentToolBase
 
             var prompt = BuildExplanationPrompt(args);
 
-            var messages = new List<ChatMessage>
+            var messages = new List<LlmMessage>
             {
-                ChatMessage.CreateSystemMessage("You are a code explanation assistant. Provide clear, accurate explanations of code snippets."),
-                ChatMessage.CreateUserMessage(prompt)
+                LlmMessage.System("You are a code explanation assistant. Provide clear, accurate explanations of code snippets."),
+                LlmMessage.User(prompt)
             };
 
-            var explanation = await _openAiClient.GetChatCompletionAsync(messages);
+            var completion = await _llmClient.GetChatCompletionAsync(messages);
 
-            return $"## Code Explanation\n\n{explanation}";
+            return $"## Code Explanation\n\n{completion.Content}";
         }
         catch (Exception ex)
         {

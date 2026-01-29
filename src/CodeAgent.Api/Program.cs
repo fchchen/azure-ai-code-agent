@@ -53,7 +53,7 @@ builder.Services.AddSingleton(sp =>
 
 // Register infrastructure services
 builder.Services.AddSingleton<ICosmosDbContext, CosmosDbContext>();
-builder.Services.AddSingleton<IAzureOpenAiClient, AzureOpenAiClientWrapper>();
+builder.Services.AddSingleton<ILlmClient, GeminiClient>();
 
 // Register RAG services
 builder.Services.AddScoped<IDocumentChunker, DocumentChunker>();
@@ -102,20 +102,28 @@ async Task InitializeCosmosDbAsync(WebApplication app)
         var configuration = app.Services.GetRequiredService<IConfiguration>();
         var databaseName = configuration["CosmosDb:DatabaseName"] ?? "CodeAgentDb";
 
-        var database = await cosmosClient.CreateDatabaseIfNotExistsAsync(databaseName);
+        // Try to get or create database (without specifying throughput for free tier)
+        var databaseResponse = await cosmosClient.CreateDatabaseIfNotExistsAsync(databaseName);
+        var database = databaseResponse.Database;
 
-        // Create containers - vector indexing is configured via Bicep/Azure Portal
-        // The chunks container should be created with vector search enabled in Azure
-        await database.Database.CreateContainerIfNotExistsAsync(
-            new ContainerProperties("chunks", "/repositoryId"));
+        // Try to create containers - these may fail on free tier if throughput limit reached
+        // The app will still work with existing containers
+        try
+        {
+            await database.CreateContainerIfNotExistsAsync(
+                new ContainerProperties("chunks", "/repositoryId"));
+            await database.CreateContainerIfNotExistsAsync(
+                new ContainerProperties("repositories", "/id"));
+            await database.CreateContainerIfNotExistsAsync(
+                new ContainerProperties("conversations", "/id"));
+        }
+        catch (CosmosException ce) when (ce.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            // Free tier throughput limit - containers may already exist or need manual creation
+            app.Logger.LogInformation("Containers may need to be created manually in Azure Portal for free tier");
+        }
 
-        await database.Database.CreateContainerIfNotExistsAsync(
-            new ContainerProperties("repositories", "/id"));
-
-        await database.Database.CreateContainerIfNotExistsAsync(
-            new ContainerProperties("conversations", "/id"));
-
-        app.Logger.LogInformation("Cosmos DB initialized successfully");
+        app.Logger.LogInformation("Cosmos DB connection verified");
     }
     catch (Exception ex)
     {
