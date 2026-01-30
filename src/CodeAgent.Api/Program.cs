@@ -53,7 +53,7 @@ builder.Services.AddSingleton(sp =>
 
 // Register infrastructure services
 builder.Services.AddSingleton<ICosmosDbContext, CosmosDbContext>();
-builder.Services.AddSingleton<ILlmClient, GeminiClient>();
+builder.Services.AddSingleton<ILlmClient, OllamaClient>();
 
 // Register RAG services
 builder.Services.AddScoped<IDocumentChunker, DocumentChunker>();
