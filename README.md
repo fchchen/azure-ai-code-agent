@@ -4,10 +4,28 @@ A full-stack agentic AI application for understanding and navigating codebases, 
 
 ## Features
 
-- **Agentic AI Patterns**: Multi-tool orchestration with ReAct-style reasoning
 - **RAG Pipeline**: Semantic code search using Azure Cosmos DB vector search
+- **Local LLM Support**: Runs with Ollama (qwen2.5-coder) for local development
 - **Grounding**: Source citations with file:line references
-- **Azure Cloud-Native**: Designed for Azure deployment with Bicep IaC
+- **Streaming Responses**: Real-time streaming chat interface
+- **CI/CD**: GitHub Actions pipeline for build and test
+
+## Screenshots
+
+### Local LLM with Ollama
+![Ollama Chat](docs/screenshots/01-ollama-chat.png)
+
+### Swagger API Documentation
+![Swagger API](docs/screenshots/02-swagger-api.png)
+
+### Frontend Chat Interface
+![Frontend Chat](docs/screenshots/03-frontend-chat.png)
+
+### Azure Cosmos DB Data
+![Cosmos DB](docs/screenshots/04-cosmos-db-data.png)
+
+### GitHub Actions CI Pipeline
+![CI Pipeline](docs/screenshots/05-github-actions-ci.png)
 
 ## Architecture
 
