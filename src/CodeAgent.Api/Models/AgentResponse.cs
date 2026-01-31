@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace CodeAgent.Api.Models;
 
 public class AgentResponse
@@ -20,7 +22,12 @@ public class AgentStep
 
 public class StreamingAgentResponse
 {
+    [JsonPropertyName("type")]
     public string Type { get; set; } = string.Empty; // thought, action, observation, answer, citation
+
+    [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("citation")]
     public Citation? Citation { get; set; }
 }
