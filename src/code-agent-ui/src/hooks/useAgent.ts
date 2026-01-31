@@ -113,7 +113,7 @@ export function useAgent(repositoryId: string) {
         setCurrentAction(null);
         break;
 
-      case 'answer':
+      case 'answer': {
         const newContent = currentContent + chunk.content;
         updateContent(newContent);
         setMessages((prev) =>
@@ -122,6 +122,7 @@ export function useAgent(repositoryId: string) {
           )
         );
         break;
+      }
 
       case 'citation':
         if (chunk.citation) {
