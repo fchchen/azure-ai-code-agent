@@ -17,11 +17,8 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
   kind: 'GlobalDocumentDB'
   properties: {
     databaseAccountOfferType: 'Standard'
-    enableFreeTier: false
+    enableFreeTier: true
     capabilities: [
-      {
-        name: 'EnableServerless'
-      }
       {
         name: 'EnableNoSQLVectorSearch'
       }
@@ -36,12 +33,6 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
     }
-    backupPolicy: {
-      type: 'Continuous'
-      continuousModeProperties: {
-        tier: 'Continuous7Days'
-      }
-    }
   }
 }
 
@@ -51,6 +42,10 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15
   properties: {
     resource: {
       id: databaseName
+    }
+    options: {
+      // Shared throughput keeps the account eligible for the Cosmos DB free tier.
+      throughput: 1000
     }
   }
 }
