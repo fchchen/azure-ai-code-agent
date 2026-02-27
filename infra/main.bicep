@@ -23,7 +23,7 @@ module cosmos 'modules/cosmos.bicep' = {
   params: {
     accountName: '${baseName}-cosmos-${resourceToken}'
     location: location
-    databaseName: 'CodeAgentDb'
+    databaseName: 'DevDb'
     tags: tags
   }
 }

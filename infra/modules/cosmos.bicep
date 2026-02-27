@@ -5,7 +5,7 @@ param accountName string
 param location string = resourceGroup().location
 
 @description('The name of the database')
-param databaseName string = 'CodeAgentDb'
+param databaseName string = 'DevDb'
 
 @description('Tags to apply to resources')
 param tags object = {}
