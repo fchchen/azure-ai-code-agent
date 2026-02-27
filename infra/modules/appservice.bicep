@@ -98,7 +98,7 @@ resource appService 'Microsoft.Web/sites@2023-12-01' = {
   }
 }
 
-resource appServiceSlotStaging 'Microsoft.Web/sites/slots@2023-12-01' = {
+resource appServiceSlotStaging 'Microsoft.Web/sites/slots@2023-12-01' = if (sku != 'F1' && sku != 'D1' && sku != 'B1' && sku != 'B2' && sku != 'B3') {
   parent: appService
   name: 'staging'
   location: location
