@@ -45,7 +45,7 @@ module appservice 'modules/appservice.bicep' = {
     appName: '${baseName}-api-${resourceToken}'
     location: location
     tags: tags
-    sku: environmentName == 'prod' ? 'P1v3' : 'B1'
+    sku: environmentName == 'prod' ? 'P1v3' : 'F1'
     openAiEndpoint: openai.outputs.endpoint
     openAiApiKey: openai.outputs.apiKey
     openAiChatDeployment: openai.outputs.chatDeploymentName
