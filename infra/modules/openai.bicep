@@ -29,7 +29,7 @@ resource openAiAccount 'Microsoft.CognitiveServices/accounts@2024-04-01-preview'
 
 resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = {
   parent: openAiAccount
-  name: 'gpt-4'
+  name: 'gpt-4o'
   sku: {
     name: 'Standard'
     capacity: 10
@@ -37,8 +37,8 @@ resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-0
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-4'
-      version: '0613'
+      name: 'gpt-4o'
+      version: '2024-11-20'
     }
     raiPolicyName: 'Microsoft.Default'
   }
