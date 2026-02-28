@@ -3,7 +3,7 @@ set -e
 
 # Configuration
 RESOURCE_GROUP="${RESOURCE_GROUP:-codeagent-rg}"
-LOCATION="${LOCATION:-eastus}"
+LOCATION="${LOCATION:-canadacentral}"
 ENVIRONMENT="${ENVIRONMENT:-dev}"
 BASE_NAME="${BASE_NAME:-codeagent}"
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:5173}"
