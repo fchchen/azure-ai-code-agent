@@ -10,19 +10,6 @@ param tags object = {}
 @description('SKU for the App Service Plan')
 param sku string = 'B1'
 
-@description('Azure OpenAI endpoint')
-param openAiEndpoint string
-
-@description('Azure OpenAI API key')
-@secure()
-param openAiApiKey string
-
-@description('Azure OpenAI chat deployment name')
-param openAiChatDeployment string
-
-@description('Azure OpenAI embedding deployment name')
-param openAiEmbeddingDeployment string
-
 @description('Cosmos DB connection string')
 @secure()
 param cosmosDbConnectionString string
@@ -58,22 +45,6 @@ resource appService 'Microsoft.Web/sites@2023-12-01' = {
       http20Enabled: true
       minTlsVersion: '1.2'
       appSettings: [
-        {
-          name: 'AzureOpenAI__Endpoint'
-          value: openAiEndpoint
-        }
-        {
-          name: 'AzureOpenAI__ApiKey'
-          value: openAiApiKey
-        }
-        {
-          name: 'AzureOpenAI__ChatDeployment'
-          value: openAiChatDeployment
-        }
-        {
-          name: 'AzureOpenAI__EmbeddingDeployment'
-          value: openAiEmbeddingDeployment
-        }
         {
           name: 'CosmosDb__ConnectionString'
           value: cosmosDbConnectionString
