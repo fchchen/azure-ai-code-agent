@@ -44,8 +44,10 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-05-15
       id: databaseName
     }
     options: {
-      // Shared throughput keeps the account eligible for the Cosmos DB free tier.
-      throughput: 1000
+      // 600 RU/s shared across non-vector containers; chunks gets 400 RU/s
+      // dedicated (required for DiskANN vector indexing). Total = 1000 RU/s
+      // which is exactly the Cosmos DB free tier grant.
+      throughput: 600
     }
   }
 }
@@ -54,6 +56,10 @@ resource chunksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
   parent: database
   name: 'chunks'
   properties: {
+    options: {
+      // Dedicated throughput required for DiskANN vector indexing
+      throughput: 400
+    }
     resource: {
       id: 'chunks'
       partitionKey: {
