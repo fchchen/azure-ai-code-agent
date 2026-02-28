@@ -37,7 +37,7 @@ az group create \
 
 # Deploy infrastructure
 echo "Deploying infrastructure..."
-DEPLOYMENT_OUTPUT=$(az deployment group create \
+az deployment group create \
     --resource-group "$RESOURCE_GROUP" \
     --template-file main.bicep \
     --parameters \
@@ -45,15 +45,13 @@ DEPLOYMENT_OUTPUT=$(az deployment group create \
         location="$LOCATION" \
         baseName="$BASE_NAME" \
         frontendUrl="$FRONTEND_URL" \
-    --query 'properties.outputs' \
-    --output json)
+    --output none
 
-# Extract outputs
-APP_SERVICE_URL=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.APP_SERVICE_URL.value')
-COSMOS_DB_ENDPOINT=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.COSMOS_DB_ENDPOINT.value')
-COSMOS_DB_ACCOUNT_NAME=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.COSMOS_DB_ACCOUNT_NAME.value')
-OPENAI_ENDPOINT=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.AZURE_OPENAI_ENDPOINT.value')
-APP_SERVICE_NAME=$(echo "$DEPLOYMENT_OUTPUT" | jq -r '.APP_SERVICE_NAME.value')
+# Extract outputs via az CLI query (no jq dependency)
+APP_SERVICE_URL=$(az deployment group show --resource-group "$RESOURCE_GROUP" --name main --query 'properties.outputs.APP_SERVICE_URL.value' -o tsv)
+COSMOS_DB_ENDPOINT=$(az deployment group show --resource-group "$RESOURCE_GROUP" --name main --query 'properties.outputs.COSMOS_DB_ENDPOINT.value' -o tsv)
+COSMOS_DB_ACCOUNT_NAME=$(az deployment group show --resource-group "$RESOURCE_GROUP" --name main --query 'properties.outputs.COSMOS_DB_ACCOUNT_NAME.value' -o tsv)
+APP_SERVICE_NAME=$(az deployment group show --resource-group "$RESOURCE_GROUP" --name main --query 'properties.outputs.APP_SERVICE_NAME.value' -o tsv)
 
 echo ""
 echo "=========================================="
@@ -61,7 +59,6 @@ echo "Deployment Complete!"
 echo "=========================================="
 echo "API URL: $APP_SERVICE_URL"
 echo "Cosmos DB: $COSMOS_DB_ENDPOINT"
-echo "OpenAI: $OPENAI_ENDPOINT"
 echo ""
 echo "To deploy the API code, run:"
 echo "  cd src/CodeAgent.Api && dotnet publish -c Release"
@@ -78,7 +75,6 @@ APP_SERVICE_URL=$APP_SERVICE_URL
 APP_SERVICE_NAME=$APP_SERVICE_NAME
 COSMOS_DB_ENDPOINT=$COSMOS_DB_ENDPOINT
 COSMOS_DB_ACCOUNT_NAME=$COSMOS_DB_ACCOUNT_NAME
-AZURE_OPENAI_ENDPOINT=$OPENAI_ENDPOINT
 EOF
 
 echo "Environment variables saved to .env.azure"
